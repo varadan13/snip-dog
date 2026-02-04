@@ -1,0 +1,130 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>getActiveElement (Shadow DOM) test</title>
+  <style>
+    body { font-family: sans-serif; padding: 1rem; max-width: 640px; }
+    .result { margin: 0.5rem 0; padding: 0.5rem; background: #f0f0f0; font-family: monospace; font-size: 0.85rem; word-break: break-all; }
+    .result strong { display: block; margin-bottom: 0.25rem; }
+    button, input { margin: 0.25rem; }
+    section { margin: 1rem 0; }
+    #host { display: block; margin: 1rem 0; padding: 1rem; border: 2px solid #333; }
+  </style>
+</head>
+<body>
+  <h1>getActiveElement (Shadow DOM) test</h1>
+  <p>
+    When focus is inside a Shadow DOM, <code>document.activeElement</code> is the
+    <strong>shadow host</strong>, not the element that actually has focus.
+    <code>getActiveElement(document)</code> recurses into shadow roots to return
+    the real focused element.
+  </p>
+
+  <section>
+    <h2>Controls</h2>
+    <button type="button" id="focusOutside">Focus outer button</button>
+    <button type="button" id="focusInside">Focus button inside shadow</button>
+    <button type="button" id="focusInputInside">Focus input inside shadow</button>
+  </section>
+
+  <section>
+    <h2>Shadow host (contains shadow DOM with button + input)</h2>
+    <div id="host"></div>
+  </section>
+
+  <section>
+    <h2>Live result</h2>
+    <div class="result">
+      <strong>document.activeElement</strong>
+      <span id="activeElement">—</span>
+    </div>
+    <div class="result">
+      <strong>getActiveElement(document)</strong>
+      <span id="getActiveElementResult">—</span>
+    </div>
+    <p><button type="button" id="refresh">Refresh</button> (or focus different elements and click Refresh)</p>
+  </section>
+
+  <script>
+    /**
+     * Gets the "true" activeElement by recursing into Shadow DOM.
+     * If the activeElement is a shadow host and its shadow has an activeElement,
+     * recurses into the shadow root. Otherwise returns the activeElement.
+     */
+    function getActiveElement(el) {
+      const activeElement = el.activeElement;
+
+      if (!activeElement) {
+        return undefined;
+      }
+
+      if (
+        activeElement.shadowRoot &&
+        activeElement.shadowRoot.activeElement !== null
+      ) {
+        return getActiveElement(activeElement.shadowRoot);
+      }
+
+      return activeElement;
+    }
+
+    // --- Custom element with Shadow DOM ---
+    class FocusTrapHost extends HTMLElement {
+      connectedCallback() {
+        const root = this.attachShadow({ mode: 'open' });
+        root.innerHTML = `
+          <p>Inside shadow DOM:</p>
+          <button type="button" id="innerBtn">Button inside shadow</button>
+          <input type="text" id="innerInput" value="Input inside shadow" size="25" />
+        `;
+      }
+    }
+    customElements.define('focus-trap-host', FocusTrapHost);
+
+    // Mount the host
+    const host = document.getElementById('host');
+    const child = document.createElement('focus-trap-host');
+    child.id = 'shadowHost';
+    host.appendChild(child);
+
+    // --- Update displayed results ---
+    function updateResults() {
+      const docActive = document.activeElement;
+      const resolved = getActiveElement(document);
+
+      document.getElementById('activeElement').textContent = docActive
+        ? (docActive.id ? `#${docActive.id}` : docActive.tagName) + ' ' + (docActive === child ? '(shadow host)' : '')
+        : 'null';
+      document.getElementById('getActiveElementResult').textContent = resolved
+        ? (resolved.id ? `#${resolved.id}` : resolved.tagName) + (resolved === docActive ? '' : ' (actual focused node inside shadow)')
+        : 'undefined';
+    }
+
+    // --- Button handlers ---
+    document.getElementById('focusOutside').addEventListener('click', () => {
+      document.getElementById('focusOutside').focus();
+      updateResults();
+    });
+
+    document.getElementById('focusInside').addEventListener('click', () => {
+      child.shadowRoot.getElementById('innerBtn').focus();
+      updateResults();
+    });
+
+    document.getElementById('focusInputInside').addEventListener('click', () => {
+      child.shadowRoot.getElementById('innerInput').focus();
+      updateResults();
+    });
+
+    document.getElementById('refresh').addEventListener('click', updateResults);
+
+    // Update on focus changes
+    document.body.addEventListener('focusin', updateResults);
+
+    // Initial state
+    updateResults();
+  </script>
+</body>
+</html>

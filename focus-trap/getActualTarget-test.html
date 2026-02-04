@@ -1,0 +1,88 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>getActualTarget (Shadow DOM) test</title>
+  <style>
+    body { font-family: sans-serif; padding: 1rem; max-width: 640px; }
+    .result { margin: 0.5rem 0; padding: 0.5rem; background: #f0f0f0; font-family: monospace; font-size: 0.85rem; word-break: break-all; }
+    .result strong { display: block; margin-bottom: 0.25rem; }
+    #host { display: block; margin: 1rem 0; padding: 1rem; border: 2px solid #333; }
+    .outside { margin: 1rem 0; padding: 1rem; border: 2px dashed #999; cursor: pointer; }
+  </style>
+</head>
+<body>
+  <h1>getActualTarget test</h1>
+  <p>
+    When you click <strong>inside</strong> a Shadow DOM, <code>event.target</code>
+    at the document level is the <strong>shadow host</strong>, not the element you
+    clicked. <code>getActualTarget(event)</code> uses
+    <code>event.composedPath()[0]</code> to return the real target inside the shadow.
+  </p>
+
+  <section>
+    <h2>Click inside the box (Shadow DOM)</h2>
+    <div id="host"></div>
+  </section>
+
+  <section>
+    <h2>Click outside (light DOM)</h2>
+    <div class="outside" id="outside">Click me (light DOM)</div>
+  </section>
+
+  <section>
+    <h2>Last click result</h2>
+    <div class="result">
+      <strong>event.target</strong>
+      <span id="targetResult">—</span>
+    </div>
+    <div class="result">
+      <strong>getActualTarget(event)</strong>
+      <span id="actualResult">—</span>
+    </div>
+    <p>When you click inside the shadow, <code>event.target</code> is the host; <code>getActualTarget(event)</code> is the button/div you clicked.</p>
+  </section>
+
+  <script>
+    function getActualTarget(event) {
+      if (event == null) return null;
+      return event.target?.shadowRoot && typeof event.composedPath === 'function'
+        ? (event.composedPath()[0] ?? event.target)
+        : event.target;
+    }
+
+    // Custom element with open Shadow DOM
+    class ActualTargetHost extends HTMLElement {
+      connectedCallback() {
+        const root = this.attachShadow({ mode: 'open' });
+        root.innerHTML = `
+          <p>Inside shadow:</p>
+          <button type="button" id="shadowBtn">Button inside shadow</button>
+          <div id="shadowDiv">Div inside shadow (click me)</div>
+        `;
+      }
+    }
+    customElements.define('actual-target-host', ActualTargetHost);
+
+    const host = document.getElementById('host');
+    host.appendChild(document.createElement('actual-target-host'));
+
+    function updateResults(event) {
+      if (!event) return;
+      const target = event.target;
+      const actual = getActualTarget(event);
+      document.getElementById('targetResult').textContent = target
+        ? (target.id ? '#' + target.id : target.tagName || target.nodeName) + (target === host.firstElementChild ? ' (shadow host)' : '')
+        : 'null';
+      document.getElementById('actualResult').textContent = actual
+        ? (actual.id ? '#' + actual.id : actual.tagName || actual.nodeName) + (actual === target ? '' : ' (actual node inside shadow)')
+        : 'null';
+    }
+
+    document.addEventListener('click', function (e) {
+      updateResults(e);
+    }, true);
+  </script>
+</body>
+</html>
