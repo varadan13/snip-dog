@@ -1,0 +1,48 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <title>input.select() example</title>
+</head>
+<body>
+  <h1>input.select() example</h1>
+
+  <p>
+    <label>
+      Text input (has .select()):
+      <input type="text" id="textInput" value="Select all this text" size="30" />
+    </label>
+  </p>
+  <p>
+    <button type="button" onclick="selectTextInput()">Select text in input</button>
+  </p>
+  <p>
+    Focus the input above, then click the button. The input’s <code>.select()</code>
+    method is called, so all text in the field is selected. You can then type to
+    replace it in one go.
+  </p>
+
+  <hr />
+
+  <p>
+    <label>
+      Checkbox (no meaningful .select()):
+      <input type="checkbox" id="checkInput" />
+    </label>
+  </p>
+  <p>
+    Checkbox and radio inputs don’t use <code>.select()</code> for text selection;
+    focus-trap’s <code>isSelectableInput()</code> returns false for them.
+  </p>
+
+  <script>
+    function selectTextInput() {
+      var input = document.getElementById('textInput');
+      input.focus();
+      if (typeof input.select === 'function') {
+        input.select(); // Selects all text in the input
+      }
+    }
+  </script>
+</body>
+</html>
